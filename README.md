@@ -156,8 +156,6 @@ GET /api/videos/jobs/:jobId
 GET /api/videos/jobs/:jobId/result
 ```
 
-See [BACKEND_API_CONTRACT.md](BACKEND_API_CONTRACT.md) for the full API contract.
-
 ## Supported Video Formats
 
 The frontend and backend support common video formats including:
