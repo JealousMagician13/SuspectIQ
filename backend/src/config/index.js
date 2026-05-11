@@ -23,11 +23,11 @@ function parseTrustProxy() {
 
 const config = {
   env: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT, 10) || 8000,
+  port: parseInt(process.env.PORT, 10) || 3000,
   trustProxy: parseTrustProxy(),
 
   cors: {
-    origins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+    origins: (process.env.CORS_ORIGINS || 'http://localhost:8080,http://127.0.0.1:8080')
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),

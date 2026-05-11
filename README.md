@@ -67,8 +67,8 @@ copy .env.example .env
 Important default values:
 
 ```txt
-PORT=8000
-CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+PORT=3000
+CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
 PYTHON_BIN=python
 ```
 
@@ -81,13 +81,13 @@ npm run dev
 Backend runs at:
 
 ```txt
-http://localhost:8000
+http://localhost:3000
 ```
 
 Health check:
 
 ```txt
-http://localhost:8000/api/health
+http://localhost:3000/api/health
 ```
 
 ## Frontend Setup
@@ -103,19 +103,19 @@ npm run dev
 Frontend runs at:
 
 ```txt
-http://127.0.0.1:5173
+http://127.0.0.1:8080
 ```
 
 The frontend calls the backend at:
 
 ```txt
-http://localhost:8000/api
+http://localhost:3000/api
 ```
 
 To override this, create `frontend/.env`:
 
 ```txt
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
 ## Render Deployment

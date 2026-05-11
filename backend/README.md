@@ -42,7 +42,7 @@ npm run dev
 NODE_ENV=production npm start
 ```
 
-The server starts on `http://localhost:8000` by default.
+The server starts on `http://localhost:3000` by default.
 
 ---
 
@@ -133,9 +133,9 @@ suspicious_prob = float(result.suspicious_probability)
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8000` | HTTP port |
+| `PORT` | `3000` | HTTP port |
 | `NODE_ENV` | `development` | Environment |
-| `CORS_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed origins |
+| `CORS_ORIGINS` | `http://localhost:8080,...` | Comma-separated allowed origins |
 | `MAX_FILE_SIZE_MB` | `500` | Max upload size in MB |
 | `UPLOAD_DIR` | `uploads` | Directory for uploaded files |
 | `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window (15 min) |

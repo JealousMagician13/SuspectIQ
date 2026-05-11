@@ -49,7 +49,7 @@ type UploadProps = {
 }
 
 function getDefaultApiBaseUrl() {
-  return (import.meta as any).env.DEV ? 'http://localhost:8000/api' : 'https://suspectiq-backend.onrender.com/api'
+  return (import.meta as any).env.DEV ? 'http://localhost:3000/api' : 'https://suspectiq-backend.onrender.com/api'
 }
 
 const API_BASE_URL = ((import.meta as any).env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '')
