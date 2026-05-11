@@ -255,7 +255,6 @@ export default function Upload({ onBack, onNext }: UploadProps) {
   return (
     <section id="upload" className="upload-section">
       <div className="upload-header">
-        <span className="ms-pill">Product Demo</span>
         <h2>Upload surveillance video</h2>
         <p>Add a clip for analysis. The uploader accepts video files only.</p>
       </div>

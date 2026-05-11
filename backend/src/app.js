@@ -71,6 +71,7 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.use('/', healthRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/videos', videoRoutes);
 
