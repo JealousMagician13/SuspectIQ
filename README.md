@@ -136,6 +136,7 @@ Backend environment variables:
 NODE_ENV=production
 CORS_ORIGINS=https://YOUR-FRONTEND-SERVICE.onrender.com
 PYTHON_BIN=python3
+PYTHON_VERSION=3.11.11
 ```
 
 Frontend service:
