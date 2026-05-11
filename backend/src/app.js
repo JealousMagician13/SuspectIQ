@@ -14,29 +14,31 @@ const notFound = require('./middleware/notFound');
 
 const app = express();
 
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (config.cors.origins.includes(origin)) return true;
-
-  try {
-    const url = new URL(origin);
-    return config.cors.allowRenderOrigins &&
-      url.protocol === 'https:' &&
-      url.hostname.endsWith('.onrender.com');
-  } catch {
-    return false;
-  }
-}
-
 // ── Security ────────────────────────────────────────────────────────────────
 app.use(helmet());
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
 app.use(
   cors({
-    origin(origin, callback) {
-      callback(null, isAllowedOrigin(origin));
-    },
+    origin: true,
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
