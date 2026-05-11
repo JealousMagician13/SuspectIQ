@@ -47,7 +47,7 @@ type UploadProps = {
   onNext?: (files: UploadedVideo[]) => void
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '')
 const POLL_INTERVAL_MS = 1200
 
 const VIDEO_EXTENSIONS = new Set([
@@ -98,7 +98,13 @@ async function readApiError(response: Response) {
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init)
+  let response: Response
+
+  try {
+    response = await fetch(url, init)
+  } catch {
+    throw new Error(`Could not reach the SuspectIQ API at ${API_BASE_URL}. Check the deployed VITE_API_BASE_URL and backend CORS_ORIGINS values.`)
+  }
 
   if (!response.ok) {
     throw new Error(await readApiError(response))

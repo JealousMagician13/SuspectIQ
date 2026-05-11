@@ -118,6 +118,42 @@ To override this, create `frontend/.env`:
 VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
+## Render Deployment
+
+Deploy the backend and frontend as separate Render services.
+
+Backend service:
+
+```txt
+Root Directory: backend
+Build Command: npm install
+Start Command: npm start
+```
+
+Backend environment variables:
+
+```txt
+NODE_ENV=production
+CORS_ORIGINS=https://YOUR-FRONTEND-SERVICE.onrender.com
+PYTHON_BIN=python
+```
+
+Frontend service:
+
+```txt
+Root Directory: frontend
+Build Command: npm install && npm run build
+Publish Directory: dist
+```
+
+Frontend environment variables:
+
+```txt
+VITE_API_BASE_URL=https://YOUR-BACKEND-SERVICE.onrender.com/api
+```
+
+After changing `VITE_API_BASE_URL`, redeploy the frontend because Vite reads this value at build time. After changing `CORS_ORIGINS`, redeploy the backend.
+
 ## Video Analysis Flow
 
 1. User uploads a video in the Demo section.
