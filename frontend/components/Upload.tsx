@@ -48,11 +48,17 @@ type UploadProps = {
   onNext?: (files: UploadedVideo[]) => void
 }
 
-function getDefaultApiBaseUrl() {
-  return (import.meta as any).env.DEV ? 'http://localhost:3000/api' : 'https://suspectiq-backend.onrender.com/api'
+function getApiBaseUrl() {
+  const apiBaseUrl = (import.meta as any).env.VITE_API_BASE_URL
+
+  if (!apiBaseUrl) {
+    throw new Error('Missing VITE_API_BASE_URL. Create frontend/.env with VITE_API_BASE_URL=http://localhost:3000/api.')
+  }
+
+  return apiBaseUrl.replace(/\/$/, '')
 }
 
-const API_BASE_URL = ((import.meta as any).env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '')
+const API_BASE_URL = getApiBaseUrl()
 const POLL_INTERVAL_MS = 1200
 const PROGRESS_CRAWL_INTERVAL_MS = 7000
 const PROGRESS_CRAWL_STEP = 15
