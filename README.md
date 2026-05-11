@@ -45,7 +45,6 @@ college-project/
 │   ├── public/
 │   ├── src/
 │   └── package.json
-├── BACKEND_API_CONTRACT.md
 └── README.md
 ```
 
