@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+suspectiq/__init__.py
+suspectiq/detector.py
+suspectiq/layers.py
+suspectiq/youtube.py
+suspectiq.egg-info/PKG-INFO
+suspectiq.egg-info/SOURCES.txt
+suspectiq.egg-info/dependency_links.txt
+suspectiq.egg-info/requires.txt
+suspectiq.egg-info/top_level.txt
+suspectiq/models/best_model_ucf.keras
+tests/test_suspectiq.py

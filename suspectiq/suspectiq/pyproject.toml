@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "suspectiq"
+version = "1.0.2"
+description = "Video anomaly / suspicious-activity detection using ResNet50 + Temporal Attention."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["video", "anomaly-detection", "deep-learning", "computer-vision"]
+
+dependencies = [
+    "tensorflow>=2.12",
+    "opencv-python>=4.7",
+    "numpy>=1.23",
+    "yt-dlp>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["suspectiq*"]
+
+[tool.setuptools.package-data]
+suspectiq = ["models/*.keras"]
