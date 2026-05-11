@@ -9,7 +9,9 @@ const config = {
   cors: {
     origins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
       .split(',')
-      .map((o) => o.trim()),
+      .map((o) => o.trim())
+      .filter(Boolean),
+    allowRenderOrigins: process.env.ALLOW_RENDER_ORIGINS !== 'false',
   },
 
   upload: {
