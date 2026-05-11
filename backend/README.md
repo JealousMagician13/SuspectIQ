@@ -140,5 +140,6 @@ suspicious_prob = float(result.suspicious_probability)
 | `UPLOAD_DIR` | `uploads` | Directory for uploaded files |
 | `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window (15 min) |
 | `RATE_LIMIT_MAX` | `100` | Max requests per window |
+| `TRUST_PROXY` | `1` on Render, otherwise `false` | Number of trusted proxy hops for forwarded client IPs |
 | `PYTHON_BIN` | `python3` | Python executable (use full path in venvs) |
 | `INFERENCE_TIMEOUT_MS` | `300000` | Max time to wait for Python process (5 min) |

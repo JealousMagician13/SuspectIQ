@@ -2,9 +2,29 @@
 
 require('dotenv').config();
 
+function parseTrustProxy() {
+  const value = process.env.TRUST_PROXY;
+
+  if (!value) {
+    return process.env.RENDER ? 1 : false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'false' || normalized === '0') return false;
+  if (normalized === 'true') return 1;
+
+  const numericValue = Number(normalized);
+  if (Number.isInteger(numericValue) && numericValue >= 0) {
+    return numericValue;
+  }
+
+  return value;
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 8000,
+  trustProxy: parseTrustProxy(),
 
   cors: {
     origins: (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')

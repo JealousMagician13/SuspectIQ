@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react'
 
 type UploadedVideo = {
@@ -20,6 +20,7 @@ type StatusResponse = {
   jobId: string
   status: JobStatus
   progress: number
+  stage?: string
 }
 
 type ResultResponse = {
@@ -48,11 +49,14 @@ type UploadProps = {
 }
 
 function getDefaultApiBaseUrl() {
-  return import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://suspectiq-backend.onrender.com/api'
+  return (import.meta as any).env.DEV ? 'http://localhost:8000/api' : 'https://suspectiq-backend.onrender.com/api'
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '')
+const API_BASE_URL = ((import.meta as any).env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '')
 const POLL_INTERVAL_MS = 1200
+const PROGRESS_CRAWL_INTERVAL_MS = 7000
+const PROGRESS_CRAWL_STEP = 15
+const PROGRESS_CRAWL_MAX = 95
 
 const VIDEO_EXTENSIONS = new Set([
   '3g2',
@@ -123,8 +127,20 @@ export default function Upload({ onBack, onNext }: UploadProps) {
   const [error, setError] = useState('')
   const [status, setStatus] = useState<JobStatus | 'idle'>('idle')
   const [progress, setProgress] = useState(0)
+  const [stage, setStage] = useState('')
   const [result, setResult] = useState<ResultResponse | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const isAnalyzing = status === 'queued' || status === 'processing'
+
+  useEffect(() => {
+    if (!isAnalyzing) return
+
+    const timer = window.setInterval(() => {
+      setProgress(prev => Math.min(PROGRESS_CRAWL_MAX, prev + PROGRESS_CRAWL_STEP))
+    }, PROGRESS_CRAWL_INTERVAL_MS)
+
+    return () => window.clearInterval(timer)
+  }, [isAnalyzing])
 
   function addFiles(incoming: FileList | File[] | null) {
     if (!incoming) return
@@ -145,6 +161,7 @@ export default function Upload({ onBack, onNext }: UploadProps) {
       setFiles(prev => [...prev, ...newFiles])
       setStatus('idle')
       setProgress(0)
+      setStage('')
       setResult(null)
     }
   }
@@ -153,6 +170,7 @@ export default function Upload({ onBack, onNext }: UploadProps) {
     setFiles(prev => prev.filter(file => file.id !== id))
     setStatus('idle')
     setProgress(0)
+    setStage('')
     setResult(null)
   }
 
@@ -189,7 +207,8 @@ export default function Upload({ onBack, onNext }: UploadProps) {
 
       const job = await requestJson<StatusResponse>(`${API_BASE_URL}/videos/jobs/${jobId}`)
       setStatus(job.status)
-      setProgress(job.progress)
+      setProgress(prev => job.status === 'completed' ? 100 : Math.max(prev, job.progress))
+      setStage(job.stage || '')
 
       if (job.status === 'failed') {
         await requestJson(`${API_BASE_URL}/videos/jobs/${jobId}/result`)
@@ -211,6 +230,7 @@ export default function Upload({ onBack, onNext }: UploadProps) {
     setError('')
     setResult(null)
     setProgress(0)
+    setStage('Queued')
     setStatus('queued')
 
     try {
@@ -224,14 +244,13 @@ export default function Upload({ onBack, onNext }: UploadProps) {
 
       onNext?.(files)
       setStatus(analysis.status)
+      setStage('Queued')
       await pollResult(analysis.jobId)
     } catch (err) {
       setStatus('failed')
       setError(err instanceof Error ? err.message : 'Video analysis failed.')
     }
   }
-
-  const isAnalyzing = status === 'queued' || status === 'processing'
 
   return (
     <section id="upload" className="upload-section">
@@ -316,6 +335,7 @@ export default function Upload({ onBack, onNext }: UploadProps) {
             <div className="upload-progress-track">
               <div className="upload-progress-bar" style={{ width: `${progress}%` }} />
             </div>
+            {stage && <p className="upload-stage">{stage}</p>}
           </div>
         )}
 

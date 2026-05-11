@@ -14,6 +14,7 @@ const jobs = new Map();
  * @property {string}  jobId
  * @property {string}  status          - queued | processing | completed | failed
  * @property {number}  progress        - 0–100
+ * @property {string}  stage
  * @property {string}  originalName
  * @property {string}  storedPath
  * @property {Object|null} result
@@ -33,6 +34,7 @@ function create(jobId, data) {
     jobId,
     status: 'queued',
     progress: 0,
+    stage: 'Queued',
     originalName: data.originalName,
     storedPath: data.storedPath,
     result: null,

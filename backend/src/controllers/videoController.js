@@ -68,6 +68,7 @@ async function getJobStatus(req, res, next) {
       jobId: job.jobId,
       status: job.status,
       progress: job.progress,
+      stage: job.stage,
     });
   } catch (err) {
     return next(err);

@@ -14,6 +14,8 @@ const notFound = require('./middleware/notFound');
 
 const app = express();
 
+app.set('trust proxy', config.trustProxy);
+
 // ── Security ────────────────────────────────────────────────────────────────
 app.use(helmet());
 

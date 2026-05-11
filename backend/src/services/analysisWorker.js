@@ -31,13 +31,32 @@ function parseBridgeOutput(stdout) {
   throw new Error('No JSON payload found in inference output.');
 }
 
+function parseBridgeEvent(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+}
+
+function clampProgress(progress) {
+  const numericProgress = Number(progress);
+  if (!Number.isFinite(numericProgress)) return null;
+
+  return Math.max(0, Math.min(99, Math.round(numericProgress)));
+}
+
 /**
  * Runs SuspectIQ prediction by spawning the Python bridge script.
  *
  * @param {string} filePath - Absolute path to the uploaded video file
+ * @param {(event: { progress: number, stage?: string }) => void} onProgress
  * @returns {Promise<Object>} - Parsed prediction result
  */
-async function runInference(filePath) {
+async function runInference(filePath, onProgress = () => {}) {
   return new Promise((resolve, reject) => {
     logger.debug('Spawning Python bridge', { script: BRIDGE_SCRIPT, target: filePath });
 
@@ -51,9 +70,30 @@ async function runInference(filePath) {
     });
 
     let stdout = '';
+    let stdoutLineBuffer = '';
     let stderr = '';
 
-    proc.stdout.on('data', (chunk) => { stdout += chunk; });
+    proc.stdout.on('data', (chunk) => {
+      const text = chunk.toString();
+      stdout += text;
+      stdoutLineBuffer += text;
+
+      const lines = stdoutLineBuffer.split(/\r?\n/);
+      stdoutLineBuffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const event = parseBridgeEvent(line);
+        if (event?.type !== 'progress') continue;
+
+        const progress = clampProgress(event.progress);
+        if (progress === null) continue;
+
+        onProgress({
+          progress,
+          stage: typeof event.stage === 'string' ? event.stage : undefined,
+        });
+      }
+    });
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
     const timer = setTimeout(() => {
@@ -108,14 +148,28 @@ async function enqueue(jobId, filePath, originalName) {
   // Mark as processing immediately (non-blocking for caller)
   setImmediate(async () => {
     try {
-      jobStore.update(jobId, { status: 'processing', progress: 10 });
+      jobStore.update(jobId, {
+        status: 'processing',
+        progress: 5,
+        stage: 'Starting analysis',
+      });
 
 
-      const inference = await runInference(filePath);
+      const inference = await runInference(filePath, ({ progress, stage }) => {
+        const currentJob = jobStore.getById(jobId);
+        const currentProgress = currentJob?.progress || 0;
+
+        jobStore.update(jobId, {
+          status: 'processing',
+          progress: Math.max(currentProgress, progress),
+          ...(stage ? { stage } : {}),
+        });
+      });
 
       jobStore.update(jobId, {
         status: 'completed',
         progress: 100,
+        stage: 'Analysis complete',
         completedAt: new Date().toISOString(),
         result: {
           videoId: `vid_${uuidv4().replace(/-/g, '').slice(0, 12)}`,
@@ -127,8 +181,12 @@ async function enqueue(jobId, filePath, originalName) {
       logger.info('Analysis job completed', { jobId, prediction: inference.prediction });
     } catch (err) {
       logger.error('Analysis job failed', { jobId, error: err.message });
+      const currentJob = jobStore.getById(jobId);
+
       jobStore.update(jobId, {
         status: 'failed',
+        progress: currentJob?.progress || 0,
+        stage: 'Analysis failed',
         errorMessage: err.message,
         completedAt: new Date().toISOString(),
       });
