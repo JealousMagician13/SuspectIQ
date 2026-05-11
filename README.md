@@ -4,8 +4,9 @@ SuspectIQ is a video surveillance analysis project that classifies uploaded clip
 
 The project has two parts:
 
-- `frontend/` - Vite + React UI
 - `backend/` - Express API for upload, analysis jobs, and results
+- `frontend/` - Vite + React UI
+- `suspectiq/` - local Python inference package with the bundled `.keras` model
 
 ## Features
 
@@ -22,9 +23,15 @@ The project has two parts:
 - Node.js 18+
 - npm
 - Python 3
-- Python package: `suspectiq`
+- Python package: local `suspectiq/` package or published `suspectiq`
 
-Install the Python inference package if needed:
+Install the local Python inference package if you are developing from this repo:
+
+```powershell
+pip install -e .\suspectiq
+```
+
+Or install the published package:
 
 ```powershell
 pip install suspectiq
@@ -48,6 +55,24 @@ college-project/
 └── README.md
 ```
 
+## SuspectIQ Python Package
+
+The `suspectiq/` folder is the local Python package used by the backend inference bridge. It contains:
+
+- `suspectiq/suspectiq/detector.py` - `SuspectIQ` detector implementation
+- `suspectiq/suspectiq/layers.py` - TensorFlow custom layers
+- `suspectiq/suspectiq/youtube.py` - YouTube helper utilities
+- `suspectiq/suspectiq/models/best_model_ucf.keras` - bundled model file
+- `suspectiq/tests/` - package tests
+
+When working locally, install it in editable mode from the repo root:
+
+```powershell
+pip install -e .\suspectiq
+```
+
+After changing files inside `suspectiq/`, restart the backend so the Python bridge uses the latest package code.
+
 ## Backend Setup
 
 From the root directory:
@@ -61,6 +86,12 @@ Create `.env` from `.env.example` if needed:
 
 ```powershell
 copy .env.example .env
+```
+
+Install the local inference package if you have not already:
+
+```powershell
+pip install -e ..\suspectiq
 ```
 
 Important default values:
@@ -131,6 +162,12 @@ Build Command: npm install && python3 -m pip install -r requirements.txt
 Start Command: npm start
 ```
 
+If you want Render to use the repo-local `suspectiq/` package instead of the published package, install it during the backend build:
+
+```txt
+Build Command: npm install && python3 -m pip install -e ../suspectiq
+```
+
 Backend environment variables:
 
 ```txt
@@ -161,7 +198,7 @@ After changing `VITE_API_BASE_URL`, redeploy the frontend because Vite reads thi
 1. User uploads a video in the Demo section.
 2. Frontend sends `POST /api/videos/analyze`.
 3. Backend stores the file and creates an async job.
-4. Backend runs Python inference through `scripts/suspectiq_bridge.py`.
+4. Backend runs Python inference through `scripts/suspectiq_bridge.py`, which imports the `suspectiq` Python package.
 5. Frontend polls `GET /api/videos/jobs/:jobId`.
 6. When complete, frontend fetches `GET /api/videos/jobs/:jobId/result`.
 7. Result is shown in the upload card.
@@ -171,8 +208,11 @@ After changing `VITE_API_BASE_URL`, redeploy the frontend because Vite reads thi
 ### Health
 
 ```txt
+GET /
 GET /api/health
 ```
+
+Both routes return the backend health payload. Use `/` for a quick browser check and `/api/health` for API-style health checks.
 
 ### Analyze Video
 
@@ -238,6 +278,17 @@ Check that `suspectiq` imports correctly:
 ```powershell
 python -c "import suspectiq; print('suspectiq ok')"
 ```
+
+### Frontend says `Missing VITE_API_BASE_URL`
+
+Create `frontend/.env` from the example file:
+
+```powershell
+cd frontend
+copy .env.example .env
+```
+
+Then restart the frontend dev server.
 
 ## Build
 
