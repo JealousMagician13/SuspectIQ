@@ -87,6 +87,7 @@ http://localhost:3000
 Health check:
 
 ```txt
+http://localhost:3000/
 http://localhost:3000/api/health
 ```
 
@@ -97,7 +98,8 @@ Open a second terminal:
 ```powershell
 cd frontend
 npm install
-npm run dev
+copy .env.example .env
+npm run start
 ```
 
 Frontend runs at:
@@ -106,16 +108,16 @@ Frontend runs at:
 http://127.0.0.1:8080
 ```
 
-The frontend calls the backend at:
-
-```txt
-http://localhost:3000/api
-```
-
-To override this, create `frontend/.env`:
+The frontend calls the backend URL configured in `frontend/.env`:
 
 ```txt
 VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+For production deployments, set `VITE_API_BASE_URL` to your deployed backend API URL before building:
+
+```txt
+VITE_API_BASE_URL=https://YOUR-BACKEND-SERVICE.onrender.com/api
 ```
 
 ## Render Deployment
