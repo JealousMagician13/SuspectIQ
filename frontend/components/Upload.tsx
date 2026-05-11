@@ -47,7 +47,15 @@ type UploadProps = {
   onNext?: (files: UploadedVideo[]) => void
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/$/, '')
+function getDefaultApiBaseUrl() {
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('.onrender.com')) {
+    return 'https://suspectiq-backend.onrender.com/api'
+  }
+
+  return 'http://localhost:8000/api'
+}
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/$/, '')
 const POLL_INTERVAL_MS = 1200
 
 const VIDEO_EXTENSIONS = new Set([
