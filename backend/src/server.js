@@ -9,6 +9,7 @@ const server = app.listen(config.port, () => {
     env: config.env,
     port: config.port,
     baseUrl: `http://localhost:${config.port}/api`,
+    commit: process.env.RENDER_GIT_COMMIT || process.env.COMMIT_SHA || 'local',
   });
 });
 

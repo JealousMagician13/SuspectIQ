@@ -107,7 +107,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(url, init)
   } catch {
-    throw new Error(`Could not reach the SuspectIQ API at ${API_BASE_URL}. Check the deployed VITE_API_BASE_URL and backend CORS_ORIGINS values.`)
+    throw new Error(`Could not reach ${url}. If this happens after progress starts, check the backend Render logs for a restart, crash, or CORS error during polling.`)
   }
 
   if (!response.ok) {
