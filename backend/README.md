@@ -107,7 +107,7 @@ The analysis worker spawns `scripts/suspectiq_bridge.py` as a child process, pas
 **Requirements:**
 
 ```bash
-pip install suspectiq
+python3 -m pip install -r requirements.txt
 ```
 
 **How it works:**

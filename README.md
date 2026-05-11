@@ -126,7 +126,7 @@ Backend service:
 
 ```txt
 Root Directory: backend
-Build Command: npm install
+Build Command: npm install && python3 -m pip install -r requirements.txt
 Start Command: npm start
 ```
 
@@ -135,7 +135,7 @@ Backend environment variables:
 ```txt
 NODE_ENV=production
 CORS_ORIGINS=https://YOUR-FRONTEND-SERVICE.onrender.com
-PYTHON_BIN=python
+PYTHON_BIN=python3
 ```
 
 Frontend service:
