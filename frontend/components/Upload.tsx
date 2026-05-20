@@ -36,6 +36,15 @@ type ResultResponse = {
   completedAt: string
 }
 
+type AnalysisState = {
+  jobId?: string
+  status: JobStatus | 'idle'
+  progress: number
+  stage: string
+  result: ResultResponse | null
+  error: string
+}
+
 type ApiErrorResponse = {
   error?: {
     code?: string
@@ -131,18 +140,33 @@ export default function Upload({ onBack, onNext }: UploadProps) {
   const [files, setFiles] = useState<UploadedVideo[]>([])
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState('')
-  const [status, setStatus] = useState<JobStatus | 'idle'>('idle')
-  const [progress, setProgress] = useState(0)
-  const [stage, setStage] = useState('')
-  const [result, setResult] = useState<ResultResponse | null>(null)
+  const [analyses, setAnalyses] = useState<Record<string, AnalysisState>>({})
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const isAnalyzing = status === 'queued' || status === 'processing'
+  const isAnalyzing = Object.values(analyses).some(analysis => analysis.status === 'queued' || analysis.status === 'processing')
+  const hasResults = Object.values(analyses).some(analysis => analysis.result)
+  const analyzedCount = files.filter(file => analyses[file.id]?.result || analyses[file.id]?.error).length
+  const batchProgress = files.length > 0
+    ? Math.round(files.reduce((total, file) => total + (analyses[file.id]?.progress || 0), 0) / files.length)
+    : 0
 
   useEffect(() => {
     if (!isAnalyzing) return
 
     const timer = window.setInterval(() => {
-      setProgress(prev => Math.min(PROGRESS_CRAWL_MAX, prev + PROGRESS_CRAWL_STEP))
+      setAnalyses(prev => {
+        const next = { ...prev }
+
+        for (const [fileId, analysis] of Object.entries(next)) {
+          if (analysis.status !== 'queued' && analysis.status !== 'processing') continue
+
+          next[fileId] = {
+            ...analysis,
+            progress: Math.min(PROGRESS_CRAWL_MAX, analysis.progress + PROGRESS_CRAWL_STEP),
+          }
+        }
+
+        return next
+      })
     }, PROGRESS_CRAWL_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
@@ -165,19 +189,17 @@ export default function Upload({ onBack, onNext }: UploadProps) {
 
     if (newFiles.length > 0) {
       setFiles(prev => [...prev, ...newFiles])
-      setStatus('idle')
-      setProgress(0)
-      setStage('')
-      setResult(null)
+      setAnalyses({})
     }
   }
 
   function removeFile(id: string) {
     setFiles(prev => prev.filter(file => file.id !== id))
-    setStatus('idle')
-    setProgress(0)
-    setStage('')
-    setResult(null)
+    setAnalyses(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -207,14 +229,35 @@ export default function Upload({ onBack, onNext }: UploadProps) {
     }
   }
 
-  async function pollResult(jobId: string) {
+  function updateAnalysis(fileId: string, updates: Partial<AnalysisState>) {
+    const initialAnalysis: AnalysisState = {
+      status: 'idle',
+      progress: 0,
+      stage: '',
+      result: null,
+      error: '',
+    }
+
+    setAnalyses(prev => ({
+      ...prev,
+      [fileId]: {
+        ...initialAnalysis,
+        ...prev[fileId],
+        ...updates,
+      },
+    }))
+  }
+
+  async function pollResult(fileId: string, jobId: string) {
     while (true) {
       await wait(POLL_INTERVAL_MS)
 
       const job = await requestJson<StatusResponse>(`${API_BASE_URL}/videos/jobs/${jobId}`)
-      setStatus(job.status)
-      setProgress(prev => job.status === 'completed' ? 100 : Math.max(prev, job.progress))
-      setStage(job.stage || '')
+      updateAnalysis(fileId, {
+        status: job.status,
+        progress: job.status === 'completed' ? 100 : job.progress,
+        stage: job.stage || '',
+      })
 
       if (job.status === 'failed') {
         await requestJson(`${API_BASE_URL}/videos/jobs/${jobId}/result`)
@@ -223,39 +266,56 @@ export default function Upload({ onBack, onNext }: UploadProps) {
 
       if (job.status === 'completed') {
         const analysisResult = await requestJson<ResultResponse>(`${API_BASE_URL}/videos/jobs/${jobId}/result`)
-        setResult(analysisResult)
+        updateAnalysis(fileId, {
+          status: 'completed',
+          progress: 100,
+          stage: 'Analysis complete',
+          result: analysisResult,
+        })
         return
       }
     }
   }
 
-  async function analyzeSelectedVideo() {
-    const selected = files[0]
-    if (!selected) return
-
-    setError('')
-    setResult(null)
-    setProgress(0)
-    setStage('Queued')
-    setStatus('queued')
+  async function analyzeVideo(file: UploadedVideo) {
+    updateAnalysis(file.id, {
+      status: 'queued',
+      progress: 0,
+      stage: 'Queued',
+      result: null,
+      error: '',
+    })
 
     try {
       const formData = new FormData()
-      formData.append('video', selected.file)
+      formData.append('video', file.file)
 
       const analysis = await requestJson<AnalyzeResponse>(`${API_BASE_URL}/videos/analyze`, {
         method: 'POST',
         body: formData,
       })
 
-      onNext?.(files)
-      setStatus(analysis.status)
-      setStage('Queued')
-      await pollResult(analysis.jobId)
+      updateAnalysis(file.id, {
+        jobId: analysis.jobId,
+        status: analysis.status,
+        stage: 'Queued',
+      })
+      await pollResult(file.id, analysis.jobId)
     } catch (err) {
-      setStatus('failed')
-      setError(err instanceof Error ? err.message : 'Video analysis failed.')
+      updateAnalysis(file.id, {
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Video analysis failed.',
+      })
     }
+  }
+
+  async function analyzeSelectedVideos() {
+    if (files.length === 0) return
+
+    setError('')
+    setAnalyses({})
+    onNext?.(files)
+    await Promise.all(files.map(file => analyzeVideo(file)))
   }
 
   return (
@@ -301,22 +361,29 @@ export default function Upload({ onBack, onNext }: UploadProps) {
         {error && <p className="upload-error">{error}</p>}
 
         {files.length > 1 && (
-          <p className="upload-note">Analyzing the first selected video. Remove it to analyze another file.</p>
+          <p className="upload-note">All selected videos will be analyzed and shown with their own result.</p>
         )}
 
         {files.length > 0 && (
           <div className="upload-file-list" aria-label="Selected videos">
-            {files.map(file => (
+            {files.map(file => {
+              const analysis = analyses[file.id]
+
+              return (
               <div key={file.id} className="upload-file-row">
                 <VideoIcon name={file.name} />
                 <div className="upload-file-details">
                   <span>{file.name}</span>
-                  <small>{formatSize(file.size)}</small>
+                  <small>
+                    {formatSize(file.size)}
+                    {analysis?.status && analysis.status !== 'idle' ? ` · ${analysis.status}` : ''}
+                  </small>
                 </div>
                 <button
                   type="button"
                   className="upload-remove"
                   aria-label={`Remove ${file.name}`}
+                  disabled={isAnalyzing}
                   onClick={() => removeFile(file.id)}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -327,43 +394,68 @@ export default function Upload({ onBack, onNext }: UploadProps) {
                   </svg>
                 </button>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
-        {status !== 'idle' && (
+        {Object.keys(analyses).length > 0 && (
           <div className="upload-status" aria-live="polite">
             <div className="upload-status-row">
-              <span>{status === 'completed' ? 'Analysis complete' : status === 'failed' ? 'Analysis failed' : 'Analyzing video'}</span>
-              <strong>{progress}%</strong>
+              <span>{isAnalyzing ? `Analyzing ${files.length} video${files.length === 1 ? '' : 's'}` : 'Batch analysis complete'}</span>
+              <strong>{batchProgress}%</strong>
             </div>
             <div className="upload-progress-track">
-              <div className="upload-progress-bar" style={{ width: `${progress}%` }} />
+              <div className="upload-progress-bar" style={{ width: `${batchProgress}%` }} />
             </div>
-            {stage && <p className="upload-stage">{stage}</p>}
+            <p className="upload-stage">{analyzedCount} of {files.length} finished</p>
           </div>
         )}
 
-        {result && (
-          <div className="upload-result">
-            <div>
-              <span>Prediction</span>
-              <strong className={`upload-prediction upload-prediction-${result.prediction}`}>
-                {result.prediction}
-              </strong>
-            </div>
-            <div>
-              <span>Confidence</span>
-              <strong>{Math.round(result.confidence * 100)}%</strong>
-            </div>
-            <div>
-              <span>Normal</span>
-              <strong>{Math.round(result.normalProbability * 100)}%</strong>
-            </div>
-            <div>
-              <span>Suspicious</span>
-              <strong>{Math.round(result.suspiciousProbability * 100)}%</strong>
-            </div>
+        {Object.keys(analyses).length > 0 && (
+          <div className="upload-results">
+            {files.map(file => {
+              const analysis = analyses[file.id]
+              if (!analysis) return null
+
+              return (
+                <div key={file.id} className="upload-result-card">
+                  <div className="upload-result-title">
+                    <span>{file.name}</span>
+                    <small>{analysis.stage || analysis.status}</small>
+                  </div>
+
+                  {analysis.error ? (
+                    <p className="upload-error">{analysis.error}</p>
+                  ) : analysis.result ? (
+                    <div className="upload-result">
+                      <div>
+                        <span>Prediction</span>
+                        <strong className={`upload-prediction upload-prediction-${analysis.result.prediction}`}>
+                          {analysis.result.prediction}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Confidence</span>
+                        <strong>{Math.round(analysis.result.confidence * 100)}%</strong>
+                      </div>
+                      <div>
+                        <span>Normal</span>
+                        <strong>{Math.round(analysis.result.normalProbability * 100)}%</strong>
+                      </div>
+                      <div>
+                        <span>Suspicious</span>
+                        <strong>{Math.round(analysis.result.suspiciousProbability * 100)}%</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="upload-progress-track">
+                      <div className="upload-progress-bar" style={{ width: `${analysis.progress}%` }} />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -376,9 +468,9 @@ export default function Upload({ onBack, onNext }: UploadProps) {
           type="button"
           className="upload-primary"
           disabled={files.length === 0 || isAnalyzing}
-          onClick={analyzeSelectedVideo}
+          onClick={analyzeSelectedVideos}
         >
-          {isAnalyzing ? 'Analyzing...' : result ? 'Analyze again' : 'Analyze video'}
+          {isAnalyzing ? 'Analyzing...' : hasResults ? 'Analyze again' : `Analyze ${files.length > 1 ? 'videos' : 'video'}`}
         </button>
       </div>
     </section>
