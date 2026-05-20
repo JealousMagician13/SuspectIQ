@@ -4,7 +4,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 
 const config = require('./config');
 const healthRoutes = require('./routes/health');
@@ -54,21 +53,6 @@ app.use(express.urlencoded({ extended: true }));
 if (config.env !== 'test') {
   app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 }
-
-// ── Rate limiting ─────────────────────────────────────────────────────────────
-const limiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.max,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: {
-      code: 'TOO_MANY_REQUESTS',
-      message: 'Too many requests. Please try again later.',
-    },
-  },
-});
-app.use('/api', limiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/', healthRoutes);

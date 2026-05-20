@@ -9,7 +9,7 @@ Express-based REST API for video analysis. Accepts video uploads, queues async a
 | Runtime | Node.js 18+ |
 | Framework | Express 5 |
 | Upload handling | Multer |
-| Security | Helmet, CORS, express-rate-limit |
+| Security | Helmet, CORS |
 | Logging | morgan + structured JSON logger |
 | IDs | uuid |
 
@@ -138,8 +138,6 @@ suspicious_prob = float(result.suspicious_probability)
 | `CORS_ORIGINS` | `http://localhost:8080,...` | Comma-separated allowed origins |
 | `MAX_FILE_SIZE_MB` | `500` | Max upload size in MB |
 | `UPLOAD_DIR` | `uploads` | Directory for uploaded files |
-| `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window (15 min) |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window |
 | `TRUST_PROXY` | `1` on Render, otherwise `false` | Number of trusted proxy hops for forwarded client IPs |
 | `PYTHON_BIN` | `python3` | Python executable (use full path in venvs) |
 | `INFERENCE_TIMEOUT_MS` | `300000` | Max time to wait for Python process (5 min) |
