@@ -1,13 +1,15 @@
 'use strict';
 
+// Converts application, upload, and unexpected errors into consistent JSON responses.
 const multer = require('multer');
 const { StatusCodes } = require('http-status-codes');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
 // eslint-disable-next-line no-unused-vars
+// Express calls this whenever a controller or middleware passes an error to next().
 function errorHandler(err, req, res, next) {
-  // Multer-specific errors
+  // Multer errors come from file upload validation, such as file size limits.
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(StatusCodes.REQUEST_TOO_LONG).json({
@@ -25,12 +27,12 @@ function errorHandler(err, req, res, next) {
     });
   }
 
-  // Known API errors
+  // ApiError is used for expected application errors with known status codes.
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json(err.toJSON());
   }
 
-  // Unexpected errors
+  // Anything else is treated as an unexpected server error and logged.
   logger.error('Unhandled error', { message: err.message, stack: err.stack });
 
   return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

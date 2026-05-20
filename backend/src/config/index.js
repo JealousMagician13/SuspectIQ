@@ -1,18 +1,23 @@
 'use strict';
 
+// Reads environment variables once and exposes the settings used by the backend.
 require('dotenv').config();
 
+// Converts TRUST_PROXY from an environment string into the value Express expects.
 function parseTrustProxy() {
   const value = process.env.TRUST_PROXY;
 
+  // Render deployments usually need one trusted proxy; local development does not.
   if (!value) {
     return process.env.RENDER ? 1 : false;
   }
 
+  // Accept common boolean-style values from .env files.
   const normalized = value.trim().toLowerCase();
   if (normalized === 'false' || normalized === '0') return false;
   if (normalized === 'true') return 1;
 
+  // Numeric values mean "trust this many proxy hops".
   const numericValue = Number(normalized);
   if (Number.isInteger(numericValue) && numericValue >= 0) {
     return numericValue;
@@ -21,6 +26,7 @@ function parseTrustProxy() {
   return value;
 }
 
+// Central configuration object used by the rest of the backend.
 const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 3000,

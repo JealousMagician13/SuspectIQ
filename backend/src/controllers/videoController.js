@@ -1,5 +1,6 @@
 'use strict';
 
+// Handles video upload requests, job status checks, and completed analysis results.
 const { v4: uuidv4 } = require('uuid');
 const { StatusCodes } = require('http-status-codes');
 const jobStore = require('../services/jobStore');
@@ -7,12 +8,10 @@ const analysisWorker = require('../services/analysisWorker');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
-/**
- * POST /api/videos/analyze
- * Accepts a video file, creates an async analysis job, and returns jobId.
- */
+// Accepts a video upload, creates a job record, and starts analysis in the background.
 async function analyzeVideo(req, res, next) {
   try {
+    // The upload middleware adds req.file; without it there is nothing to analyze.
     if (!req.file) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
@@ -21,14 +20,16 @@ async function analyzeVideo(req, res, next) {
       );
     }
 
+    // Short UUID-based job IDs are easier to pass around while still being unique enough.
     const jobId = `job_${uuidv4().replace(/-/g, '').slice(0, 16)}`;
 
+    // Store the initial queued job before starting the slower analysis work.
     jobStore.create(jobId, {
       originalName: req.file.originalname,
       storedPath: req.file.path,
     });
 
-    // Kick off analysis asynchronously — does not block response
+    // Run analysis asynchronously so the API can respond immediately with a jobId.
     analysisWorker.enqueue(jobId, req.file.path, req.file.originalname);
 
     logger.info('Video upload accepted', {
@@ -47,15 +48,13 @@ async function analyzeVideo(req, res, next) {
   }
 }
 
-/**
- * GET /api/videos/jobs/:jobId
- * Returns current status and progress of an analysis job.
- */
+// Returns the current progress for a job while analysis is still running.
 async function getJobStatus(req, res, next) {
   try {
     const { jobId } = req.params;
     const job = jobStore.getById(jobId);
 
+    // Unknown job IDs return a normal API error instead of crashing the server.
     if (!job) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -75,15 +74,13 @@ async function getJobStatus(req, res, next) {
   }
 }
 
-/**
- * GET /api/videos/jobs/:jobId/result
- * Returns the final prediction once the job is completed.
- */
+// Returns the final model result after the analysis job has completed.
 async function getJobResult(req, res, next) {
   try {
     const { jobId } = req.params;
     const job = jobStore.getById(jobId);
 
+    // The result endpoint also validates that the requested job exists.
     if (!job) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -92,6 +89,7 @@ async function getJobResult(req, res, next) {
       );
     }
 
+    // Failed jobs return the stored error message from the worker.
     if (job.status === 'failed') {
       throw new ApiError(
         StatusCodes.INTERNAL_SERVER_ERROR,
@@ -100,6 +98,7 @@ async function getJobResult(req, res, next) {
       );
     }
 
+    // A job must finish before the client can read its prediction output.
     if (job.status !== 'completed') {
       throw new ApiError(
         StatusCodes.CONFLICT,

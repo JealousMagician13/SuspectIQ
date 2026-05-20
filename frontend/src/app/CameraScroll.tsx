@@ -1,15 +1,19 @@
 "use client";
 
+// Client-side animation component that draws camera frames on a canvas as the page scrolls.
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+// Background color used when clearing the canvas before drawing each frame.
 const BACKGROUND = "#050505";
 
+// Describes one folder of animation frames and how to build each file path.
 type FrameSet = {
   count: number;
   path: (index: number) => string;
 };
 
+// Possible frame folders; the component picks the first one that loads.
 const FRAME_SETS: FrameSet[] = [
   {
     count: 120,
@@ -26,6 +30,7 @@ const FRAME_SETS: FrameSet[] = [
   },
 ];
 
+// Loads one image and resolves only after the browser has it ready.
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -36,6 +41,7 @@ function loadImage(src: string) {
   });
 }
 
+// Draws an image so it fills the canvas without leaving empty borders.
 function drawCover(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -70,6 +76,7 @@ function drawCover(
   );
 }
 
+// Displays text overlays that fade in and out based on scroll progress.
 function StoryText({
   align,
   eyebrow,
@@ -83,8 +90,10 @@ function StoryText({
   range: [number, number, number, number];
   title: string;
 }) {
+  // Maps the scroll range for this caption into an opacity value.
   const opacity = useTransform(progress, range, [0, 1, 1, 0]);
 
+  // Chooses the CSS class that places the caption on the left, right, or center.
   const alignment =
     align === "left"
       ? "story-left"
@@ -105,7 +114,9 @@ function StoryText({
   );
 }
 
+// Main scroll scene: preloads frames, draws them to canvas, and syncs frame index to scroll.
 export default function CameraScroll() {
+  // Refs store DOM nodes and frame state without causing React re-renders.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
@@ -114,19 +125,23 @@ export default function CameraScroll() {
   const [loaded, setLoaded] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
 
+  // Tracks how far the user has scrolled through the sticky animation section.
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
+  // Smooths the raw scroll value so frame changes feel less jumpy.
   const smoothProgress = useSpring(scrollYProgress, {
     damping: 38,
     mass: 0.18,
     stiffness: 240,
   });
 
+  // Last drawable frame index; kept at least 1 to avoid divide-by-zero style issues.
   const activeFrames = useMemo(() => Math.max(frameCount - 1, 1), [frameCount]);
 
+  // Draws the requested frame onto the current canvas.
   const renderFrame = useCallback((index: number) => {
     const canvas = canvasRef.current;
     const image = imagesRef.current[index];
@@ -140,6 +155,7 @@ export default function CameraScroll() {
     drawCover(context, image, canvas);
   }, []);
 
+  // Resizes the canvas for the current viewport and redraws the current frame.
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
@@ -156,9 +172,11 @@ export default function CameraScroll() {
     renderFrame(frameRef.current);
   }, [renderFrame]);
 
+  // Loads all animation frames once when the component mounts.
   useEffect(() => {
     let cancelled = false;
 
+    // Picks an available frame set, then loads its frames into memory.
     async function preloadFrames() {
       setLoaded(false);
       setLoadProgress(0);
@@ -183,6 +201,7 @@ export default function CameraScroll() {
       const resolvedFrameSet = frameSet ?? FRAME_SETS[0];
       const loadedImages: HTMLImageElement[] = [];
 
+      // Load frames in order so loading progress can be shown accurately.
       for (let index = 0; index < resolvedFrameSet.count; index += 1) {
         if (cancelled) {
           return;
@@ -204,6 +223,8 @@ export default function CameraScroll() {
       imagesRef.current = loadedImages;
       setFrameCount(loadedImages.length);
       setLoaded(true);
+
+      // Waits for the browser layout before measuring and drawing the canvas.
       requestAnimationFrame(() => {
         resizeCanvas();
         renderFrame(0);
@@ -212,11 +233,13 @@ export default function CameraScroll() {
 
     preloadFrames();
 
+    // Prevents state updates if the component unmounts during image loading.
     return () => {
       cancelled = true;
     };
   }, [renderFrame, resizeCanvas]);
 
+  // Keeps the canvas size correct after frames are loaded and when the window resizes.
   useEffect(() => {
     if (!loaded) {
       return;
@@ -228,6 +251,7 @@ export default function CameraScroll() {
     return () => window.removeEventListener("resize", resizeCanvas);
   }, [loaded, resizeCanvas]);
 
+  // Converts scroll progress into a frame number and redraws when it changes.
   useEffect(() => {
     return smoothProgress.on("change", (latest) => {
       if (!loaded) {
@@ -245,6 +269,7 @@ export default function CameraScroll() {
     });
   }, [activeFrames, loaded, renderFrame, smoothProgress]);
 
+  // The returned markup layers the canvas, navigation, loader, and scroll text.
   return (
     <section
       ref={containerRef}

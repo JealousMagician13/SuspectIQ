@@ -1,5 +1,7 @@
 'use strict';
 
+// Builds the Express application: security middleware, CORS, body parsing,
+// route registration, and the shared error handlers are wired here.
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -13,12 +15,13 @@ const notFound = require('./middleware/notFound');
 
 const app = express();
 
+// Allows Express to understand proxy headers when deployed behind a host like Render.
 app.set('trust proxy', config.trustProxy);
 
-// ── Security 
+// Adds common HTTP security headers.
 app.use(helmet()); 
 
-// ── CORS 
+// Manually handles CORS preflight requests before the route handlers run.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
@@ -37,6 +40,7 @@ app.use((req, res, next) => {
   return next();
 });
 
+// Lets the API accept requests from the frontend during local and hosted use.
 app.use(
   cors({
     origin: true,
@@ -45,24 +49,24 @@ app.use(
   }),
 );
 
-// ── Body parsers ─────────────────────────────────────────────────────────────
+// Parses JSON and form bodies before controllers try to read req.body.
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── HTTP request logging ─────────────────────────────────────────────────────
+// Morgan prints request logs during development and production, but not tests.
 if (config.env !== 'test') {
   app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 }
 
-// ── Routes ────────────────────────────────────────────────────────────────────
+// Registers the public health routes and the video-analysis API routes.
 app.use('/', healthRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/videos', videoRoutes);
 
-// ── 404 handler ───────────────────────────────────────────────────────────────
+// Any unmatched request reaches the 404 handler.
 app.use(notFound);
 
-// ── Global error handler ──────────────────────────────────────────────────────
+// The error handler must be registered last so it can catch errors from above.
 app.use(errorHandler);
 
 module.exports = app;

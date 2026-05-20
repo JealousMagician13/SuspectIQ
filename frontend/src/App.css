@@ -1,7 +1,4 @@
-/* ══════════════════════════════════════════════════════════════
-   SITE SHELL
-   ══════════════════════════════════════════════════════════════ */
-
+/* Styles the main SuspectIQ page sections, cards, upload area, footer, and team layout. */
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Oxanium:wght@300;400;600;700;800&display=swap');
 
 .site-shell {
@@ -197,9 +194,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   DESIGN TOKENS — INTELLIGENCE SYSTEM THEME
-   ══════════════════════════════════════════════════════════════ */
 
 .site-shell {
   --ms-navy:        #020812;
@@ -219,9 +213,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   KEYFRAMES
-   ══════════════════════════════════════════════════════════════ */
 
 @keyframes borderPulse {
   0%, 100% { opacity: 0.55; }
@@ -235,9 +226,6 @@
   100% { transform: translateY(400%); opacity: 0; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SECTIONS
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-pillars,
 .ms-arch-outer,
@@ -266,11 +254,6 @@
   margin: 0 auto;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CORE PANEL — shared by all card types
-   PERF: removed backdrop-filter (very expensive), collapsed
-   box-shadow to 2 layers, removed animated box-shadow.
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-card,
 .ms-node,
@@ -287,18 +270,15 @@
   overflow: hidden;
   color: var(--ms-text);
 
-  /* Static border glow — no animation on box-shadow */
   box-shadow:
     0 0 0 1px rgba(0, 180, 255, 0.28),
     0 20px 60px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(0, 200, 255, 0.18);
 
-  /* GPU-friendly: promote to own layer */
   will-change: transform;
   transform: translateZ(0);
 }
 
-/* ── Luminous gradient top border ── */
 .ms-card::before,
 .ms-node::before,
 .ms-metric-card::before,
@@ -319,13 +299,11 @@
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  /* PERF: slowed down, only opacity animated */
   animation: borderPulse 6s ease-in-out infinite;
   pointer-events: none;
   z-index: 1;
 }
 
-/* ── Scan line effect — only on cards (not nodes/metrics to reduce count) ── */
 .ms-card::after {
   content: '';
   position: absolute;
@@ -340,13 +318,11 @@
     rgba(0, 220, 255, 0) 85%,
     transparent 100%
   );
-  /* PERF: stagger per card so all 3 don't animate in sync */
   animation: scanLine 10s ease-in-out infinite;
   pointer-events: none;
   z-index: 2;
 }
 
-/* ── Internal volumetric light source ── */
 .ms-card > *,
 .ms-node > *,
 .ms-metric-card > *,
@@ -356,9 +332,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   PILLAR CARDS
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-card {
   min-height: 280px;
@@ -420,9 +393,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   DIVIDER
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-section-wrap {
   padding: 0 clamp(20px, 6vw, 96px);
@@ -444,9 +414,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   ARCH SECTION
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-arch-outer,
 .ms-metrics-outer,
@@ -548,9 +515,6 @@
   box-shadow: 0 0 10px rgba(0, 255, 176, 0.7), 0 0 20px rgba(0, 255, 176, 0.3);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ARCH FLOW NODES
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-arch-flow {
   display: grid;
@@ -608,7 +572,6 @@
   color: rgba(100, 160, 200, 0.55);
 }
 
-/* ── Badges ── */
 .ms-badge {
   display: inline-flex;
   margin-bottom: 10px;
@@ -642,7 +605,6 @@
   text-shadow: 0 0 8px rgba(0, 255, 176, 0.45);
 }
 
-/* ── Arrow connectors ── */
 .ms-arrow {
   display: grid;
   width: 28px;
@@ -673,9 +635,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   METRICS SECTION
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-metrics-outer {
   text-align: left;
@@ -753,9 +712,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   CONFUSION MATRIX CARDS
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-confusion-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -811,9 +767,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   VISION SECTION
-   ══════════════════════════════════════════════════════════════ */
 
 .ms-vision {
   text-align: center;
@@ -854,9 +807,6 @@
 }
 
 
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 920px) {
   .ms-pillars-grid,
@@ -885,9 +835,6 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   REDUCED MOTION — respect user preferences
-   ══════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   .ms-card::before,
   .ms-card::after,
@@ -898,7 +845,6 @@
   }
 }
 
-/* Professional model panels */
 .ms-card,
 .ms-node,
 .ms-metric-card,
@@ -1009,7 +955,6 @@
   color: #ffd780;
 }
 
-/* Upload */
 .upload-section {
   display: grid;
   justify-items: center;
@@ -1409,7 +1354,6 @@
   }
 }
 
-/* Footer */
 .site-footer {
   padding: clamp(52px, 7vw, 76px) clamp(20px, 6vw, 96px) 34px;
   border-top: 1px solid rgba(0, 200, 255, 0.14);
@@ -1605,7 +1549,6 @@
   }
 }
 
-/* Team */
 .team-section {
   position: relative;
   display: grid;

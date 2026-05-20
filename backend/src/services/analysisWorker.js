@@ -1,16 +1,23 @@
 'use strict';
 
+// Runs the Python video-analysis script in the background and updates the job
+// store as progress or final results come back from the script.
 const { v4: uuidv4 } = require('uuid');
 const { spawn } = require('child_process');
 const path = require('path');
 const jobStore = require('./jobStore');
 const logger = require('../utils/logger');
 
+// Location of the Python bridge that actually runs the model.
 const BRIDGE_SCRIPT = path.resolve(__dirname, '../../scripts/suspectiq_bridge.py');
+
+// Allows deployment to override the Python command if the server needs a custom path.
 const PYTHON_BIN = process.env.PYTHON_BIN || 'python3';
-// Timeout for the Python process (default: 5 minutes)
+
+// Maximum time allowed for one inference run before it is treated as failed.
 const INFERENCE_TIMEOUT_MS = parseInt(process.env.INFERENCE_TIMEOUT_MS || '300000', 10);
 
+// Finds the final JSON result printed by the Python bridge.
 function parseBridgeOutput(stdout) {
   const lines = stdout
     .split(/\r?\n/)
@@ -24,13 +31,15 @@ function parseBridgeOutput(stdout) {
     try {
       return JSON.parse(line);
     } catch {
-      // Keep scanning earlier lines.
+      // Some earlier JSON-looking lines may not be the final result.
+      continue;
     }
   }
 
   throw new Error('No JSON payload found in inference output.');
 }
 
+// Parses one streamed line from Python, usually a progress event.
 function parseBridgeEvent(line) {
   const trimmed = line.trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return null;
@@ -42,6 +51,7 @@ function parseBridgeEvent(line) {
   }
 }
 
+// Keeps progress inside the range shown to users before completion reaches 100%.
 function clampProgress(progress) {
   const numericProgress = Number(progress);
   if (!Number.isFinite(numericProgress)) return null;
@@ -49,17 +59,12 @@ function clampProgress(progress) {
   return Math.max(0, Math.min(99, Math.round(numericProgress)));
 }
 
-/**
- * Runs SuspectIQ prediction by spawning the Python bridge script.
- *
- * @param {string} filePath - Absolute path to the uploaded video file
- * @param {(event: { progress: number, stage?: string }) => void} onProgress
- * @returns {Promise<Object>} - Parsed prediction result
- */
+// Starts the Python bridge and resolves with its parsed prediction result.
 async function runInference(filePath, onProgress = () => {}) {
   return new Promise((resolve, reject) => {
     logger.debug('Spawning Python bridge', { script: BRIDGE_SCRIPT, target: filePath });
 
+    // The Node process passes the uploaded file path to Python and listens to its output.
     const proc = spawn(PYTHON_BIN, [BRIDGE_SCRIPT, filePath], {
       env: {
         ...process.env,
@@ -73,6 +78,7 @@ async function runInference(filePath, onProgress = () => {}) {
     let stdoutLineBuffer = '';
     let stderr = '';
 
+    // Progress events arrive through stdout while the Python script is still running.
     proc.stdout.on('data', (chunk) => {
       const text = chunk.toString();
       stdout += text;
@@ -94,13 +100,17 @@ async function runInference(filePath, onProgress = () => {}) {
         });
       }
     });
+
+    // stderr is kept for logging if the bridge fails or prints diagnostics.
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
 
+    // Stops inference if Python hangs longer than the configured timeout.
     const timer = setTimeout(() => {
       proc.kill('SIGTERM');
       reject(new Error(`SuspectIQ inference timed out after ${INFERENCE_TIMEOUT_MS}ms`));
     }, INFERENCE_TIMEOUT_MS);
 
+    // When Python exits, validate its output and convert it into a JavaScript object.
     proc.on('close', (code) => {
       clearTimeout(timer);
 
@@ -126,6 +136,7 @@ async function runInference(filePath, onProgress = () => {}) {
       resolve(parsed);
     });
 
+    // Handles failures that happen before Python starts correctly.
     proc.on('error', (err) => {
       clearTimeout(timer);
       logger.error('Failed to spawn Python bridge', { error: err.message });
@@ -134,27 +145,21 @@ async function runInference(filePath, onProgress = () => {}) {
   });
 }
 
-/**
- * Enqueue a video for analysis.
- * Updates job store throughout the lifecycle.
- *
- * @param {string} jobId
- * @param {string} filePath
- * @param {string} originalName
- */
+// Starts a background analysis job and writes each state change to the job store.
 async function enqueue(jobId, filePath, originalName) {
   logger.info('Analysis job enqueued', { jobId, originalName });
 
-  // Mark as processing immediately (non-blocking for caller)
+  // setImmediate lets the upload response finish before heavier processing starts.
   setImmediate(async () => {
     try {
+      // Mark the job as active so the frontend can show progress right away.
       jobStore.update(jobId, {
         status: 'processing',
         progress: 5,
         stage: 'Starting analysis',
       });
 
-
+      // Run inference and update the stored progress whenever Python emits progress.
       const inference = await runInference(filePath, ({ progress, stage }) => {
         const currentJob = jobStore.getById(jobId);
         const currentProgress = currentJob?.progress || 0;
@@ -166,6 +171,7 @@ async function enqueue(jobId, filePath, originalName) {
         });
       });
 
+      // Store the final prediction in the same shape the result endpoint returns.
       jobStore.update(jobId, {
         status: 'completed',
         progress: 100,
@@ -180,6 +186,7 @@ async function enqueue(jobId, filePath, originalName) {
 
       logger.info('Analysis job completed', { jobId, prediction: inference.prediction });
     } catch (err) {
+      // Failed jobs keep their error message so the result endpoint can report it.
       logger.error('Analysis job failed', { jobId, error: err.message });
       const currentJob = jobStore.getById(jobId);
 

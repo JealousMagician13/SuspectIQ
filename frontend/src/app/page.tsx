@@ -1,5 +1,7 @@
+// Next.js page that displays the camera scroll animation and the text panel below it.
 import CameraScroll from "./CameraScroll";
 
+// Renders the scroll animation first, then the short content panel below it.
 export default function Page() {
   return (
     <main className="next-site-shell">

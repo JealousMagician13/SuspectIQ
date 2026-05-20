@@ -109,6 +109,11 @@ function wait(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms))
 }
 
+function keepProgressMovingForward(current: number, incoming?: number) {
+  if (typeof incoming !== 'number') return current
+  return Math.max(current, incoming)
+}
+
 async function readApiError(response: Response) {
   const fallback = `Request failed with status ${response.status}`
 
@@ -238,14 +243,23 @@ export default function Upload({ onBack, onNext }: UploadProps) {
       error: '',
     }
 
-    setAnalyses(prev => ({
-      ...prev,
-      [fileId]: {
+    setAnalyses(prev => {
+      const current = prev[fileId]
+      const nextAnalysis = {
         ...initialAnalysis,
-        ...prev[fileId],
+        ...current,
         ...updates,
-      },
-    }))
+      }
+
+      if (updates.progress !== undefined) {
+        nextAnalysis.progress = keepProgressMovingForward(current?.progress || 0, updates.progress)
+      }
+
+      return {
+        ...prev,
+        [fileId]: nextAnalysis,
+      }
+    })
   }
 
   async function pollResult(fileId: string, jobId: string) {

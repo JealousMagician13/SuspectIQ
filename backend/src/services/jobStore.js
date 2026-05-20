@@ -1,34 +1,10 @@
 'use strict';
 
-/**
- * Simple in-memory job store.
- *
- * In production, replace with a persistent store (Redis, PostgreSQL, etc.).
- * The interface is kept intentionally thin so swapping is straightforward.
- */
-
+// Keeps track of analysis jobs while the server is running. Each job stores
+// the upload path, current progress, final result, or error details.
 const jobs = new Map();
 
-/**
- * @typedef {Object} Job
- * @property {string}  jobId
- * @property {string}  status          - queued | processing | completed | failed
- * @property {number}  progress        - 0–100
- * @property {string}  stage
- * @property {string}  originalName
- * @property {string}  storedPath
- * @property {Object|null} result
- * @property {string|null} errorMessage
- * @property {string}  createdAt
- * @property {string|null} completedAt
- */
-
-/**
- * Create a new job entry.
- * @param {string} jobId
- * @param {Object} data
- * @returns {Job}
- */
+// Creates the first job entry when a video upload is accepted.
 function create(jobId, data) {
   const job = {
     jobId,
@@ -46,24 +22,21 @@ function create(jobId, data) {
   return job;
 }
 
-/**
- * Retrieve a job by ID.
- * @param {string} jobId
- * @returns {Job|undefined}
- */
+// Finds a job by ID so controllers and workers can read its latest state.
 function getById(jobId) {
   return jobs.get(jobId);
 }
 
-/**
- * Update fields on an existing job.
- * @param {string} jobId
- * @param {Partial<Job>} updates
- * @returns {Job|null}
- */
+// Merges new fields into an existing job as progress or results change.
 function update(jobId, updates) {
   const job = jobs.get(jobId);
   if (!job) return null;
+
+  // Progress should only move forward for the same job, never jump backward.
+  if (typeof updates.progress === 'number' && typeof job.progress === 'number') {
+    updates.progress = Math.max(job.progress, updates.progress);
+  }
+
   Object.assign(job, updates);
   return job;
 }
