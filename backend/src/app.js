@@ -15,10 +15,10 @@ const app = express();
 
 app.set('trust proxy', config.trustProxy);
 
-// ── Security ────────────────────────────────────────────────────────────────
-app.use(helmet());
+// ── Security 
+app.use(helmet()); 
 
-// ── CORS ─────────────────────────────────────────────────────────────────────
+// ── CORS 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
